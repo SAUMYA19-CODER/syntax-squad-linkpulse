@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import "./App.css";
 
+import QRGenerator from "./QRGenerator";
 export default function App() {
   const [originalUrl, setOriginalUrl] = useState("");
   const [shortUrl, setShortUrl] = useState("");
@@ -189,6 +190,9 @@ export default function App() {
             </div>
           )}
         </section>
+
+
+        <QRGenerator />
 
         <div className="feature-row">
           <div className="feature-item">
