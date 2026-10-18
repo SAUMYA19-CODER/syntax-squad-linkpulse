@@ -5,3 +5,5 @@ build/
 backend_backup/
 backend_old/
 *.pem
+backend/diagnose-ssl.js
+backend/inspect-db.js
