@@ -1,13 +1,46 @@
+
 import express from "express";
 import cors from "cors";
 import { randomBytes } from "node:crypto";
 import db from "./db.js";
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
+const APP_BASE_URL = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 
 app.use(cors());
 app.use(express.json());
+
+// Get saved links for the management dashboard
+app.get("/api/links", async (req, res) => {
+  try {
+    const [rows] = await db.execute(
+      `SELECT id, original_url, short_code, clicks, created_at
+       FROM urls
+       ORDER BY created_at DESC`
+    );
+
+    const links = rows.map((row) => ({
+      id: row.id,
+      originalUrl: row.original_url,
+      shortCode: row.short_code,
+      shortUrl: `${APP_BASE_URL}/${row.short_code}`,
+      clicks: row.clicks,
+      createdAt: row.created_at
+    }));
+
+    return res.json({
+      success: true,
+      links: links
+    });
+  } catch (error) {
+    console.error("Error fetching links:", error.message);
+
+    return res.status(500).json({
+      error: "Unable to fetch links."
+    });
+  }
+});
 
 // Create a short URL and save it in MySQL
 app.post("/api/shorten", async (req, res) => {
@@ -16,7 +49,7 @@ app.post("/api/shorten", async (req, res) => {
 
     if (!originalUrl || typeof originalUrl !== "string") {
       return res.status(400).json({
-        error: "Please enter a URL",
+        error: "Please enter a URL"
       });
     }
 
@@ -26,7 +59,7 @@ app.post("/api/shorten", async (req, res) => {
       parsedUrl = new URL(originalUrl);
     } catch {
       return res.status(400).json({
-        error: "Please enter a valid URL",
+        error: "Please enter a valid URL"
       });
     }
 
@@ -35,7 +68,7 @@ app.post("/api/shorten", async (req, res) => {
       !parsedUrl.hostname.includes(".")
     ) {
       return res.status(400).json({
-        error: "Please enter a valid HTTP or HTTPS URL",
+        error: "Please enter a valid HTTP or HTTPS URL"
       });
     }
 
@@ -50,13 +83,13 @@ app.post("/api/shorten", async (req, res) => {
     return res.json({
       success: true,
       originalUrl: cleanUrl,
-      shortUrl: "http://localhost:" + PORT + "/" + code,
+      shortUrl: `${APP_BASE_URL}/${code}`
     });
   } catch (error) {
     console.error("Error creating short URL:", error.message);
 
     return res.status(500).json({
-      error: "Unable to create short URL. Please try again.",
+      error: "Unable to create short URL. Please try again."
     });
   }
 });
@@ -94,5 +127,6 @@ app.get("/:code", async (req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-  console.log("URL Shortener running at http://localhost:" + PORT);
+  console.log(`URL Shortener running on port ${PORT}`);
 });
+
