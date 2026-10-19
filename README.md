@@ -76,22 +76,18 @@ Users can generate short links, create QR codes, manage existing links, and moni
 
 
 
-## 🖼️ Screenshots
+## 📸 Screenshots
 
 ### 1. Homepage and URL Shortening
-
 ![LinkPulse Homepage](screenshots/homepage.png)
 
 ### 2. QR Code Generation
-
 ![LinkPulse QR Code Generation](screenshots/qr-code.png)
 
 ### 3. Link Management
-
 ![LinkPulse Link Management](screenshots/link-management.png)
 
 ### 4. Analytics Dashboard
-
 ![LinkPulse Analytics Dashboard](screenshots/analytics.png)
 
 
