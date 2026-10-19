@@ -1,4 +1,4 @@
-
+﻿
 import { useState, useEffect } from "react";
 import {
   Link2,
@@ -10,8 +10,10 @@ import {
   ShieldCheck,
   RefreshCw
 } from "lucide-react";
+
 import "./App.css";
 import QRGenerator from "./QRGenerator";
+import AnalyticsDashboard from "./AnalyticsDashboard";
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
@@ -20,6 +22,9 @@ const API_BASE_URL = (
 export default function App() {
   const [originalUrl, setOriginalUrl] = useState("");
   const [shortUrl, setShortUrl] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
+  const [clickLimit, setClickLimit] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
@@ -44,7 +49,9 @@ export default function App() {
       setLinks(data.links);
     } catch (err) {
       console.error("Error loading links:", err);
-      setLinksError("Unable to load saved links. Please try again.");
+      setLinksError(
+        "Unable to load saved links. Please try again."
+      );
     } finally {
       setLinksLoading(false);
     }
@@ -55,7 +62,7 @@ export default function App() {
     fetchLinks();
   }, []);
 
-  // Create a new short URL
+  // Create a short URL with optional expiration and click limit
   async function handleShorten(event) {
     event.preventDefault();
 
@@ -63,27 +70,63 @@ export default function App() {
     setShortUrl("");
     setCopied(false);
 
-    let formattedUrl = originalUrl.trim();
+    const formattedUrl = originalUrl.trim();
 
     if (!formattedUrl) {
       setError("Please enter a URL first.");
       return;
     }
 
-    if (!/^https?:\/\//i.test(formattedUrl)) {
-      formattedUrl = `https://${formattedUrl}`;
+    let finalUrl = formattedUrl;
+
+    if (!/^https?:\/\//i.test(finalUrl)) {
+      finalUrl = `https://${finalUrl}`;
     }
 
+    let parsedUrl;
+
     try {
-      const parsedUrl = new URL(formattedUrl);
+      parsedUrl = new URL(finalUrl);
 
       if (
         !["http:", "https:"].includes(parsedUrl.protocol) ||
-        !parsedUrl.hostname.includes(".")
+        !parsedUrl.hostname.includes(".") ||
+        parsedUrl.username ||
+        parsedUrl.password
       ) {
         throw new Error("Invalid URL");
       }
+    } catch {
+      setError("Please enter a valid website URL.");
+      return;
+    }
 
+    if (clickLimit !== "") {
+      const limit = Number(clickLimit);
+
+      if (
+        !Number.isSafeInteger(limit) ||
+        limit < 1 ||
+        limit > 1000000000
+      ) {
+        setError("Maximum clicks must be a positive whole number.");
+        return;
+      }
+    }
+
+    if (expiresAt) {
+      const expiry = new Date(expiresAt);
+
+      if (
+        Number.isNaN(expiry.getTime()) ||
+        expiry.getTime() <= Date.now()
+      ) {
+        setError("Please select an expiration time in the future.");
+        return;
+      }
+    }
+
+    try {
       setLoading(true);
 
       const response = await fetch(`${API_BASE_URL}/api/shorten`, {
@@ -92,25 +135,32 @@ export default function App() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          originalUrl: parsedUrl.href
+          originalUrl: parsedUrl.href,
+          expiresAt: expiresAt
+            ? new Date(expiresAt).toISOString()
+            : null,
+          clickLimit: clickLimit === ""
+            ? null
+            : Number(clickLimit)
         })
       });
 
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || "Unable to shorten this URL.");
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.error || "Unable to shorten this URL."
+        );
       }
 
       setShortUrl(data.shortUrl);
+      setExpiresAt("");
+      setClickLimit("");
 
-      // Refresh the dashboard after creating a link
       await fetchLinks();
     } catch (err) {
       setError(
-        err.message === "Invalid URL"
-          ? "Please enter a valid website URL."
-          : err.message || "Could not connect to the server."
+        err.message || "Could not connect to the server."
       );
     } finally {
       setLoading(false);
@@ -141,14 +191,86 @@ export default function App() {
         setCopiedCode("");
       }, 2000);
     } catch {
-      setLinksError("Copy failed. Please copy the link manually.");
+      setLinksError(
+        "Copy failed. Please copy the link manually."
+      );
     }
   }
 
-  // Format the creation date
+  // Enable or disable a saved short link
+  async function handleToggleLink(link) {
+    try {
+      setLinksError("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/links/${link.id}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            isActive: !link.isActive
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.error || "Unable to update link status."
+        );
+      }
+
+      await fetchLinks();
+    } catch (err) {
+      setLinksError(
+        err.message || "Could not update link status."
+      );
+    }
+  }
+
+  // Delete a saved short link
+  async function handleDeleteLink(linkId) {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this link? Its short URL will stop working."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setLinksError("");
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/links/${linkId}`,
+        {
+          method: "DELETE"
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.error || "Unable to delete the link."
+        );
+      }
+
+      await fetchLinks();
+    } catch (err) {
+      setLinksError(
+        err.message || "Could not delete the link."
+      );
+    }
+  }
+
+  // Format dates for display
   function formatDate(dateValue) {
     if (!dateValue) {
-      return "Date unavailable";
+      return "Not set";
     }
 
     const date = new Date(dateValue);
@@ -157,13 +279,41 @@ export default function App() {
       return "Date unavailable";
     }
 
-    return date.toLocaleDateString();
+    return date.toLocaleString();
+  }
+
+  // Determine whether a link has expired or reached its click limit
+  function getLinkStatus(link) {
+    if (!link.isActive) {
+      return "Disabled";
+    }
+
+    if (
+      link.expiresAt &&
+      new Date(link.expiresAt).getTime() <= Date.now()
+    ) {
+      return "Expired";
+    }
+
+    if (
+      link.clickLimit !== null &&
+      link.clickLimit !== undefined &&
+      Number(link.clicks) >= Number(link.clickLimit)
+    ) {
+      return "Limit reached";
+    }
+
+    return "Enabled";
   }
 
   return (
     <div className="app-shell">
       <header className="topbar">
-        <a className="brand" href="/" aria-label="LinkPulse home">
+        <a
+          className="brand"
+          href="/"
+          aria-label="LinkPulse home"
+        >
           <span className="brand-icon">
             <Link2 size={23} />
           </span>
@@ -210,11 +360,57 @@ export default function App() {
                 id="original-url"
                 type="text"
                 value={originalUrl}
-                onChange={(event) => setOriginalUrl(event.target.value)}
+                onChange={(event) =>
+                  setOriginalUrl(event.target.value)
+                }
                 placeholder="https://example.com/your-long-link"
                 autoComplete="url"
               />
             </div>
+
+            {/* Optional link rules */}
+            <div className="link-rules-inputs">
+              <div className="rule-field">
+                <label htmlFor="expires-at">
+                  Expiration date (optional)
+                </label>
+
+                <input
+                  id="expires-at"
+                  type="datetime-local"
+                  value={expiresAt}
+                  min={new Date(Date.now() + 60000)
+                    .toISOString()
+                    .slice(0, 16)}
+                  onChange={(event) =>
+                    setExpiresAt(event.target.value)
+                  }
+                />
+              </div>
+
+              <div className="rule-field">
+                <label htmlFor="click-limit">
+                  Maximum clicks (optional)
+                </label>
+
+                <input
+                  id="click-limit"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={clickLimit}
+                  onChange={(event) =>
+                    setClickLimit(event.target.value)
+                  }
+                  placeholder="Unlimited"
+                />
+              </div>
+            </div>
+
+            <p className="rules-help">
+              Leave both fields empty for a link without
+              an expiration date or click limit.
+            </p>
 
             {error && (
               <p className="error-message">{error}</p>
@@ -225,7 +421,10 @@ export default function App() {
               type="submit"
               disabled={loading}
             >
-              {loading ? "Creating your link..." : "Shorten URL"}
+              {loading
+                ? "Creating your link..."
+                : "Shorten URL"}
+
               {!loading && <ArrowRight size={18} />}
             </button>
           </form>
@@ -236,6 +435,7 @@ export default function App() {
                 <span className="success-icon">
                   <Check size={16} />
                 </span>
+
                 Your short link is ready!
               </div>
 
@@ -255,7 +455,10 @@ export default function App() {
                   onClick={handleCopy}
                   aria-label="Copy short URL"
                 >
-                  {copied ? <Check size={17} /> : <Copy size={17} />}
+                  {copied
+                    ? <Check size={17} />
+                    : <Copy size={17} />}
+
                   {copied ? "Copied" : "Copy"}
                 </button>
               </div>
@@ -306,8 +509,9 @@ export default function App() {
           <div className="dashboard-heading">
             <div>
               <h2>Link Management</h2>
+
               <p className="dashboard-description">
-                View your saved links and their performance.
+                View and manage your saved links.
               </p>
             </div>
 
@@ -346,7 +550,8 @@ export default function App() {
                   Total clicks:{" "}
                   <strong>
                     {links.reduce(
-                      (total, link) => total + Number(link.clicks || 0),
+                      (total, link) =>
+                        total + Number(link.clicks || 0),
                       0
                     )}
                   </strong>
@@ -354,79 +559,125 @@ export default function App() {
               </div>
 
               <div className="links-list">
-                {links.map((link) => (
-                  <article
-                    className="saved-link-card"
-                    key={link.id}
-                  >
-                    <div className="saved-link-details">
-                      <a
-                        className="saved-short-url"
-                        href={link.shortUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {link.shortUrl}
-                      </a>
+                {links.map((link) => {
+                  const status = getLinkStatus(link);
 
-                      <p
-                        className="saved-original-url"
-                        title={link.originalUrl}
-                      >
-                        Destination: {link.originalUrl}
-                      </p>
+                  return (
+                    <article
+                      className="saved-link-card"
+                      key={link.id}
+                    >
+                      <div className="saved-link-details">
+                        <a
+                          className="saved-short-url"
+                          href={link.shortUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {link.shortUrl}
+                        </a>
 
-                      <div className="saved-link-meta">
-                        <span>
-                          Clicks: <strong>{link.clicks}</strong>
-                        </span>
+                        <p
+                          className="saved-original-url"
+                          title={link.originalUrl}
+                        >
+                          Destination: {link.originalUrl}
+                        </p>
 
-                        <span>
-                          Created: {formatDate(link.createdAt)}
-                        </span>
+                        <div className="saved-link-meta">
+                          <span>
+                            Clicks:{" "}
+                            <strong>{link.clicks}</strong>
+                            {link.clickLimit !== null &&
+                              link.clickLimit !== undefined &&
+                              ` / ${link.clickLimit}`}
+                          </span>
+
+                          <span>
+                            Created: {formatDate(link.createdAt)}
+                          </span>
+
+                          <span>
+                            Expires: {formatDate(link.expiresAt)}
+                          </span>
+
+                          <span
+                            className={
+                              status === "Enabled"
+                                ? "link-status-active"
+                                : "link-status-disabled"
+                            }
+                          >
+                            Status: {status}
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="saved-link-actions">
-                      <button
-                        className="copy-button"
-                        type="button"
-                        onClick={() =>
-                          handleCopySaved(
-                            link.shortUrl,
-                            link.shortCode
-                          )
-                        }
-                        aria-label="Copy saved short URL"
-                      >
-                        {copiedCode === link.shortCode ? (
-                          <Check size={16} />
-                        ) : (
-                          <Copy size={16} />
-                        )}
+                      {/* Saved Link Actions */}
+                      <div className="saved-link-actions">
+                        <button
+                          className="copy-button"
+                          type="button"
+                          onClick={() =>
+                            handleCopySaved(
+                              link.shortUrl,
+                              link.shortCode
+                            )
+                          }
+                          aria-label="Copy saved short URL"
+                        >
+                          {copiedCode === link.shortCode
+                            ? <Check size={16} />
+                            : <Copy size={16} />}
 
-                        {copiedCode === link.shortCode
-                          ? "Copied"
-                          : "Copy"}
-                      </button>
+                          {copiedCode === link.shortCode
+                            ? "Copied"
+                            : "Copy"}
+                        </button>
 
-                      <a
-                        className="open-link"
-                        href={link.originalUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label="Open destination URL"
-                      >
-                        Open destination
-                        <ExternalLink size={14} />
-                      </a>
-                    </div>
-                  </article>
-                ))}
+                        <a
+                          className="open-link"
+                          href={link.originalUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label="Open destination URL"
+                        >
+                          Open destination
+                          <ExternalLink size={14} />
+                        </a>
+
+                        <button
+                          className="copy-button"
+                          type="button"
+                          onClick={() => handleToggleLink(link)}
+                          disabled={
+                            status === "Expired" ||
+                            status === "Limit reached"
+                          }
+                        >
+                          {link.isActive ? "Disable" : "Enable"}
+                        </button>
+
+                        <button
+                          className="copy-button"
+                          type="button"
+                          onClick={() =>
+                            handleDeleteLink(link.id)
+                          }
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </>
           )}
         </section>
+
+        {/* Analytics Dashboard */}
+        <AnalyticsDashboard />
 
         <p className="privacy-note">
           Your links are stored in the database for future access.
@@ -440,4 +691,3 @@ export default function App() {
     </div>
   );
 }
-

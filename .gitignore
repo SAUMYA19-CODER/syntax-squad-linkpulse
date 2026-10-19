@@ -7,3 +7,8 @@ backend_old/
 *.pem
 backend/diagnose-ssl.js
 backend/inspect-db.js
+*.backup.js
+*.backup.jsx
+
+*.backup.js
+*.backup.jsx

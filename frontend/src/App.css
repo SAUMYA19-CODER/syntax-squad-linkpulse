@@ -620,3 +620,63 @@ a:focus-visible {
     padding: 16px;
   }
 }
+/* Link rules form */
+.link-rules-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+
+.rule-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rule-field label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rule-field input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #d7dce5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #222222;
+  font: inherit;
+}
+
+.rule-field input:focus {
+  outline: 2px solid #a5b4fc;
+  border-color: #6366f1;
+}
+
+.rules-help {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
+}
+
+.link-status-active {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.link-status-disabled {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .link-rules-inputs {
+    grid-template-columns: 1fr;
+  }
+}

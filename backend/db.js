@@ -1,4 +1,5 @@
 
+
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
 import fs from "node:fs";
@@ -7,9 +8,18 @@ dotenv.config({
   path: new URL("./.env", import.meta.url)
 });
 
-const caCertificate = process.env.DB_CA_CERT
-  ? process.env.DB_CA_CERT.replace(/\\n/g, "\n")
-  : fs.readFileSync(new URL("./ca.pem", import.meta.url), "utf8");
+let caCertificate;
+
+if (process.env.DB_CA_CERT) {
+  // Use the certificate supplied through Render's environment variables.
+  caCertificate = process.env.DB_CA_CERT.replace(/\\n/g, "\n");
+} else {
+  // Use the local certificate when running on your computer.
+  caCertificate = fs.readFileSync(
+    new URL("./ca.pem", import.meta.url),
+    "utf8"
+  );
+}
 
 const db = mysql.createPool({
   host: process.env.DB_HOST,
