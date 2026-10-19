@@ -2,13 +2,13 @@
 
 ### Shorten Links. Share Smarter. Track Better.
 
-**LinkPulse** is a full-stack URL shortener designed to make sharing and managing links easier. It allows users to shorten long URLs, manage their links, track clicks, and generate QR codes for convenient sharing.
+**LinkPulse** is a full-stack URL shortener designed to simplify link sharing and management. It allows users to shorten long URLs, manage their links, track clicks, and generate QR codes for convenient sharing.
 
 ## 🚀 Live Demo
 
-* **Live Website:** Add your deployed frontend URL here.
+* **Live Website:** https://linkpulse-rust.vercel.app/
 * **Backend API:** https://linkpulse-backend-v3md.onrender.com
-* **GitHub Repository:** Add your public GitHub repository URL here.
+* **GitHub Repository:** https://github.com/SAUMYA19-CODER/syntax-squad-linkpulse
 
 ## 📌 Problem Statement
 
@@ -61,7 +61,7 @@ The application connects a frontend interface with a backend API and a database 
 ## 📂 Project Structure
 
 ```text
-URL-shortener-project/
+syntax-squad-linkpulse/
 │
 ├── backend/
 │   ├── server.js
@@ -82,7 +82,7 @@ URL-shortener-project/
 └── README.md
 ```
 
-*Note: This is an illustrative structure. Your actual repository may contain additional files or use different folder names.*
+*Note: This is an illustrative structure. The actual folder names and files may differ.*
 
 ## ⚙️ Installation and Setup
 
@@ -95,13 +95,13 @@ URL-shortener-project/
 ### 1. Clone the Repository
 
 ```bash
-git clone YOUR_PUBLIC_GITHUB_REPOSITORY_URL
+git clone https://github.com/SAUMYA19-CODER/syntax-squad-linkpulse.git
 ```
 
 ### 2. Navigate to the Project Directory
 
 ```bash
-cd URL-shortener-project
+cd syntax-squad-linkpulse
 ```
 
 ### 3. Install Backend Dependencies
@@ -131,9 +131,7 @@ Alternatively, use the start command defined in your backend's `package.json`.
 
 ### 6. Start the Frontend
 
-Open another terminal and navigate to your frontend directory.
-
-Install the required dependencies and run the development command specified in the frontend's `package.json`.
+Open another terminal, navigate to the frontend directory, install the required dependencies, and run the development command specified in the frontend's `package.json`.
 
 ## 📸 Project Screenshots
 
